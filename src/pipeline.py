@@ -17,13 +17,24 @@ class Pipeline:
     @classmethod
     def from_pretrained(cls, *args, **kwargs):
         t5_encoder = T5EncoderModel.from_pretrained(
-            *args, subfolder="text_encoer_2", **kwargs
+            *args,
+            subfolder="text_encoer_2",
+            **kwargs,
         )
+
         text_encoder = FluxPipeline.from_pretrained(
-            *args, text_encoder_2=t5_encoder, transformer=None, vae=None
+            *args,
+            text_encoder_2=t5_encoder,
+            transformer=None,
+            vae=None,
+            **kwargs,
         )
+
         pipeline = FluxPipeline.from_pretrained(
-            *args, text_encoder=None, text_encoder_2=None, **kwargs
+            *args,
+            text_encoder=None,
+            text_encoder_2=None,
+            **kwargs,
         )
 
         pipeline.enable_model_cpu_offload()
@@ -33,7 +44,7 @@ class Pipeline:
 
 def load_pipeline() -> Pipeline:
     pipeline = Pipeline.from_pretrained(
-        "stablediffusionapi/newdream-sdxl-20",
+        "black-forest-labs/FLUX.1-schnell",
         torch_dtype=torch.float16,
         local_files_only=True,
     )
