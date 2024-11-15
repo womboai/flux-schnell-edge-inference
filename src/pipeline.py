@@ -38,6 +38,8 @@ def load_pipeline() -> Pipeline:
         local_files_only=True,
     )
 
+    infer(TextToImageRequest(prompt="Hello World"), pipeline)
+
     return pipeline
 
 
