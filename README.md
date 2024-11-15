@@ -1,6 +1,6 @@
-# edge-maxxing-newdream-sdxl
+# flux-schnell-edge-inference
 
-This holds the baseline for the SDXL Nvidia GeForce RTX 4090 contest, which can be forked freely and optimized
+This holds the baseline for the FLUX Schnel NVIDIA GeForce RTX 4090 contest, which can be forked freely and optimized
 
 Some recommendations are as follows:
 - Installing dependencies should be done in `pyproject.toml`, including git dependencies
