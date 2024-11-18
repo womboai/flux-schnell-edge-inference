@@ -1,89 +1,105 @@
+from diffusers import FluxPipeline, AutoencoderKL
+from diffusers.image_processor import VaeImageProcessor
+from transformers import T5EncoderModel, T5TokenizerFast, CLIPTokenizer, CLIPTextModel
 import torch
-from transformers import T5EncoderModel
+import gc
 from PIL.Image import Image
-from diffusers import FluxPipeline
 from pipelines.models import TextToImageRequest
 from torch import Generator
 
+Pipeline = None
 
-class Pipeline:
-    text_encoder: FluxPipeline
-    pipeline: FluxPipeline
-
-    def __init__(self, text_encoder: FluxPipeline, pipeline: FluxPipeline):
-        self.text_encoder = text_encoder
-        self.pipeline = pipeline
-
-    @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        t5_encoder = T5EncoderModel.from_pretrained(
-            *args,
-            subfolder="text_encoer_2",
-            **kwargs,
-        )
-
-        text_encoder = FluxPipeline.from_pretrained(
-            *args,
-            text_encoder_2=t5_encoder,
-            transformer=None,
-            vae=None,
-            **kwargs,
-        )
-
-        pipeline = FluxPipeline.from_pretrained(
-            *args,
-            text_encoder=None,
-            text_encoder_2=None,
-            **kwargs,
-        )
-
-        pipeline.enable_model_cpu_offload()
-
-        return cls(text_encoder, pipeline)
-
+CHECKPOINT = "black-forest-labs/FLUX.1-schnell"
 
 def load_pipeline() -> Pipeline:
-    pipeline = Pipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-schnell",
-        torch_dtype=torch.float16,
-        local_files_only=True,
+    infer(TextToImageRequest(prompt=""), Pipeline)
+
+    return Pipeline
+
+
+def encode_prompt(prompt: str):
+    text_encoder = CLIPTextModel.from_pretrained(
+        CHECKPOINT,
+        subfolder="text_encoder",
+        torch_dtype=torch.bfloat16,
     )
 
-    infer(TextToImageRequest(prompt="Hello World"), pipeline)
+    text_encoder_2 = T5EncoderModel.from_pretrained(
+        CHECKPOINT,
+        subfolder="text_encoder_2",
+        torch_dtype=torch.bfloat16,
+    )
 
-    return pipeline
+    tokenizer = CLIPTokenizer.from_pretrained(CHECKPOINT, subfolder="tokenizer")
+    tokenizer_2 = T5TokenizerFast.from_pretrained(CHECKPOINT, subfolder="tokenizer_2")
+
+    pipeline = FluxPipeline.from_pretrained(
+        CHECKPOINT,
+        text_encoder=text_encoder,
+        text_encoder_2=text_encoder_2,
+        tokenizer=tokenizer,
+        tokenizer_2=tokenizer_2,
+        transformer=None,
+        vae=None,
+    ).to("cuda")
+
+    with torch.no_grad():
+        print("Encoding prompts.")
+        return pipeline.encode_prompt(
+            prompt=prompt,
+            prompt_2=None,
+            max_sequence_length=256,
+        )
 
 
-@torch.inference_mode()
-def infer(request: TextToImageRequest, pipeline: Pipeline) -> Image:
-    if request.seed is None:
+def infer_latents(prompt_embeds, pooled_prompt_embeds, width: int | None, height: int | None, seed: int | None):
+    pipeline = FluxPipeline.from_pretrained(
+        CHECKPOINT,
+        text_encoder=None,
+        text_encoder_2=None,
+        tokenizer=None,
+        tokenizer_2=None,
+        vae=None,
+        torch_dtype=torch.bfloat16,
+    ).to("cuda")
+
+    if seed is None:
         generator = None
     else:
-        generator = Generator("cuda").manual_seed(request.seed)
+        generator = Generator(pipeline.device).manual_seed(seed)
 
-    pipeline.text_encoder.to("cuda")
-
-    (
-        prompt_embeds,
-        pooled_prompt_embeds,
-        _,
-    ) = pipeline.text_encoder.encode_prompt(
-        prompt=request.prompt, prompt_2="", max_sequence_length=256
-    )
-
-    pipeline.text_encoder.to("cpu")
-
-    pipeline.pipeline.to("cuda")
-
-    image = pipeline.pipeline(
-        prompt_embeds=prompt_embeds.bfloat16(),
-        pooled_prompt_embeds=pooled_prompt_embeds.bfloat16(),
-        width=request.width,
-        height=request.height,
-        generator=generator,
+    return pipeline(
+        prompt_embeds=prompt_embeds,
+        pooled_prompt_embeds=pooled_prompt_embeds,
         num_inference_steps=4,
-    ).images[0]
+        guidance_scale=0.0,
+        width=width,
+        height=height,
+        generator=generator,
+        output_type="latent",
+    ).images
 
-    pipeline.pipeline.to("cpu")
 
-    return image
+def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
+    prompt_embeds, pooled_prompt_embeds, text_ids = encode_prompt(request.prompt)
+
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    latents = infer_latents(prompt_embeds, pooled_prompt_embeds, request.width, request.height)
+
+    vae = AutoencoderKL.from_pretrained(
+        CHECKPOINT,
+        subfolder="vae",
+        torch_dtype=torch.bfloat16,
+    ).to("cuda")
+
+    vae_scale_factor = 2 ** (len(vae.config.block_out_channels))
+    image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor)
+
+    with torch.no_grad():
+        latents = FluxPipeline._unpack_latents(latents, request.height, request.width, vae_scale_factor)
+        latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
+
+        image = vae.decode(latents, return_dict=False)[0]
+        return image_processor.postprocess(image, output_type="pil")
