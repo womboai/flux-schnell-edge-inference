@@ -86,7 +86,7 @@ def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
     gc.collect()
     torch.cuda.empty_cache()
 
-    latents = infer_latents(prompt_embeds, pooled_prompt_embeds, request.width, request.height)
+    latents = infer_latents(prompt_embeds, pooled_prompt_embeds, request.width, request.height, request.seed)
 
     vae = AutoencoderKL.from_pretrained(
         CHECKPOINT,
