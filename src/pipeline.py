@@ -11,6 +11,12 @@ Pipeline = None
 
 CHECKPOINT = "black-forest-labs/FLUX.1-schnell"
 
+def empty_cache():
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_max_memory_allocated()
+    torch.cuda.reset_peak_memory_stats()
+
 def load_pipeline() -> Pipeline:
     infer(TextToImageRequest(prompt=""), Pipeline)
 
@@ -44,7 +50,6 @@ def encode_prompt(prompt: str):
     ).to("cuda")
 
     with torch.no_grad():
-        print("Encoding prompts.")
         return pipeline.encode_prompt(
             prompt=prompt,
             prompt_2=None,
@@ -81,12 +86,15 @@ def infer_latents(prompt_embeds, pooled_prompt_embeds, width: int | None, height
 
 
 def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
+    empty_cache()
+
     prompt_embeds, pooled_prompt_embeds, text_ids = encode_prompt(request.prompt)
 
-    gc.collect()
-    torch.cuda.empty_cache()
+    empty_cache()
 
     latents = infer_latents(prompt_embeds, pooled_prompt_embeds, request.width, request.height, request.seed)
+
+    empty_cache()
 
     vae = AutoencoderKL.from_pretrained(
         CHECKPOINT,
