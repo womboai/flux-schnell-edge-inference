@@ -126,4 +126,4 @@ def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
         latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
 
         image = vae.decode(latents, return_dict=False)[0]
-        return image_processor.postprocess(image, output_type="pil")
+        return image_processor.postprocess(image, output_type="pil")[0]
