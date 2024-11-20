@@ -24,8 +24,6 @@ def load_pipeline() -> Pipeline:
 
 
 def encode_prompt(prompt: str):
-    empty_cache()
-
     text_encoder = CLIPTextModel.from_pretrained(
         CHECKPOINT,
         subfolder="text_encoder",
@@ -52,21 +50,11 @@ def encode_prompt(prompt: str):
     ).to("cuda")
 
     with torch.no_grad():
-        result = pipeline.encode_prompt(
+        return pipeline.encode_prompt(
             prompt=prompt,
             prompt_2=None,
             max_sequence_length=256,
         )
-
-    del text_encoder
-    del text_encoder_2
-    del tokenizer
-    del tokenizer_2
-    del pipeline
-
-    empty_cache()
-
-    return result
 
 
 def infer_latents(prompt_embeds, pooled_prompt_embeds, width: int | None, height: int | None, seed: int | None):
@@ -85,7 +73,7 @@ def infer_latents(prompt_embeds, pooled_prompt_embeds, width: int | None, height
     else:
         generator = Generator(pipeline.device).manual_seed(seed)
 
-    result = pipeline(
+    return pipeline(
         prompt_embeds=prompt_embeds,
         pooled_prompt_embeds=pooled_prompt_embeds,
         num_inference_steps=4,
@@ -96,18 +84,17 @@ def infer_latents(prompt_embeds, pooled_prompt_embeds, width: int | None, height
         output_type="latent",
     ).images
 
-    del pipeline.transformer
-    del pipeline
+
+def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
+    empty_cache()
+
+    prompt_embeds, pooled_prompt_embeds, text_ids = encode_prompt(request.prompt)
 
     empty_cache()
 
-    return result
-
-
-def infer(request: TextToImageRequest, _pipeline: Pipeline) -> Image:
-    prompt_embeds, pooled_prompt_embeds, text_ids = encode_prompt(request.prompt)
-
     latents = infer_latents(prompt_embeds, pooled_prompt_embeds, request.width, request.height, request.seed)
+
+    empty_cache()
 
     vae = AutoencoderKL.from_pretrained(
         CHECKPOINT,
