@@ -4,6 +4,7 @@ from typing import TypeAlias
 import torch
 from PIL.Image import Image
 from diffusers import FluxPipeline, FluxTransformer2DModel, AutoencoderKL
+from huggingface_hub.constants import HF_HUB_CACHE
 from pipelines.models import TextToImageRequest
 from torch import Generator
 from transformers import T5EncoderModel, CLIPTextModel
@@ -43,6 +44,7 @@ def load_pipeline() -> Pipeline:
         "RobertML/FLUX.1-schnell-int8wo",
         revision="307e0777d92df966a3c0f99f31a6ee8957a9857a",
         local_files_only=True,
+        cache_dir=HF_HUB_CACHE,
         torch_dtype=torch.bfloat16,
         use_safetensors=False,
     )
