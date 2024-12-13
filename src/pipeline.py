@@ -1,4 +1,5 @@
 import gc
+import os
 from typing import TypeAlias
 
 import torch
@@ -40,11 +41,10 @@ def load_pipeline() -> Pipeline:
         torch_dtype=torch.bfloat16,
     )
 
+    path = os.path.join(HF_HUB_CACHE, "models--RobertML--FLUX.1-schnell-int8wo/snapshots/307e0777d92df966a3c0f99f31a6ee8957a9857a")
+
     transformer = FluxTransformer2DModel.from_pretrained(
-        "RobertML/FLUX.1-schnell-int8wo",
-        revision="307e0777d92df966a3c0f99f31a6ee8957a9857a",
-        local_files_only=True,
-        cache_dir=HF_HUB_CACHE,
+        path,
         torch_dtype=torch.bfloat16,
         use_safetensors=False,
     )
