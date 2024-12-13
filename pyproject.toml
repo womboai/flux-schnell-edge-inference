@@ -15,6 +15,7 @@ dependencies = [
   "torch==2.5.1",
   "protobuf==5.28.3",
   "sentencepiece==0.2.0",
+  "torchao==0.6.1",
   "hf_transfer==0.1.8",
   "edge-maxxing-pipelines @ git+https://github.com/womboai/edge-maxxing@7c760ac54f6052803dadb3ade8ebfc9679a94589#subdirectory=pipelines",
 ]
