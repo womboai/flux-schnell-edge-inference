@@ -11,40 +11,41 @@ from transformers import T5EncoderModel, CLIPTextModel
 Pipeline: TypeAlias = FluxPipeline
 
 CHECKPOINT = "black-forest-labs/FLUX.1-schnell"
+REVISION = "741f7c3ce8b383c54771c7003378a50191e9efe9"
 
-def empty_cache():
-    gc.collect()
-    torch.cuda.empty_cache()
-    torch.cuda.reset_max_memory_allocated()
-    torch.cuda.reset_peak_memory_stats()
 
 def load_pipeline() -> Pipeline:
     text_encoder = CLIPTextModel.from_pretrained(
         CHECKPOINT,
+        revision=REVISION,
         subfolder="text_encoder",
         torch_dtype=torch.bfloat16,
     )
 
     text_encoder_2 = T5EncoderModel.from_pretrained(
         CHECKPOINT,
+        revision=REVISION,
         subfolder="text_encoder_2",
         torch_dtype=torch.bfloat16,
     )
 
     vae = AutoencoderKL.from_pretrained(
         CHECKPOINT,
+        revision=REVISION,
         subfolder="vae",
         torch_dtype=torch.bfloat16,
     )
 
     transformer = FluxTransformer2DModel.from_pretrained(
         "RobertML/FLUX.1-schnell-int8wo",
+        revision="307e0777d92df966a3c0f99f31a6ee8957a9857a",
         torch_dtype=torch.bfloat16,
         use_safetensors=False,
     )
 
     pipeline = FluxPipeline.from_pretrained(
         CHECKPOINT,
+        revision=REVISION,
         text_encoder=text_encoder,
         text_encoder_2=text_encoder_2,
         transformer=transformer,
@@ -57,7 +58,9 @@ def load_pipeline() -> Pipeline:
     return pipeline
 
 def infer(request: TextToImageRequest, pipeline: Pipeline) -> Image:
-    empty_cache()
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
 
     generator = Generator(pipeline.device).manual_seed(request.seed)
 
