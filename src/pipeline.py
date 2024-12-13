@@ -60,7 +60,7 @@ def load_pipeline() -> Pipeline:
         torch_dtype=torch.bfloat16,
     ).to("cuda")
 
-    infer(TextToImageRequest(prompt=""), Pipeline)
+    pipeline("")
 
     return pipeline
 
