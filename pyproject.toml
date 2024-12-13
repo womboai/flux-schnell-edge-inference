@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "flux-schnell-edge-inference"
 description = "An edge-maxxing model submission for the 4090 Flux contest"
 requires-python = ">=3.10,<3.13"
-version = "7"
+version = "8"
 dependencies = [
   "diffusers==0.31.0",
   "transformers==4.46.2",
@@ -15,11 +15,19 @@ dependencies = [
   "torch==2.5.1",
   "protobuf==5.28.3",
   "sentencepiece==0.2.0",
+  "torchao==0.6.1",
+  "hf_transfer==0.1.8",
   "edge-maxxing-pipelines @ git+https://github.com/womboai/edge-maxxing@7c760ac54f6052803dadb3ade8ebfc9679a94589#subdirectory=pipelines",
 ]
 
-[tool.edge-maxxing]
-models = ["black-forest-labs/FLUX.1-schnell"]
+[[tool.edge-maxxing.models]]
+repository = "black-forest-labs/FLUX.1-schnell"
+revision = "741f7c3ce8b383c54771c7003378a50191e9efe9"
+exclude = ["transformer"]
+
+[[tool.edge-maxxing.models]]
+repository = "RobertML/FLUX.1-schnell-int8wo"
+revision = "307e0777d92df966a3c0f99f31a6ee8957a9857a"
 
 [project.scripts]
 start_inference = "main:main"
