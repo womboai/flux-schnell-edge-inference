@@ -19,6 +19,7 @@ def load_pipeline() -> Pipeline:
         CHECKPOINT,
         revision=REVISION,
         subfolder="text_encoder",
+        local_files_only=True,
         torch_dtype=torch.bfloat16,
     )
 
@@ -26,6 +27,7 @@ def load_pipeline() -> Pipeline:
         CHECKPOINT,
         revision=REVISION,
         subfolder="text_encoder_2",
+        local_files_only=True,
         torch_dtype=torch.bfloat16,
     )
 
@@ -33,12 +35,14 @@ def load_pipeline() -> Pipeline:
         CHECKPOINT,
         revision=REVISION,
         subfolder="vae",
+        local_files_only=True,
         torch_dtype=torch.bfloat16,
     )
 
     transformer = FluxTransformer2DModel.from_pretrained(
         "RobertML/FLUX.1-schnell-int8wo",
         revision="307e0777d92df966a3c0f99f31a6ee8957a9857a",
+        local_files_only=True,
         torch_dtype=torch.bfloat16,
         use_safetensors=False,
     )
@@ -46,6 +50,7 @@ def load_pipeline() -> Pipeline:
     pipeline = FluxPipeline.from_pretrained(
         CHECKPOINT,
         revision=REVISION,
+        local_files_only=True,
         text_encoder=text_encoder,
         text_encoder_2=text_encoder_2,
         transformer=transformer,
